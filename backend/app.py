@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 from sqlite_utils import Database
@@ -8,6 +9,13 @@ from ocr import process_image_to_latex
 
 # Initialize FastAPI app
 app = FastAPI(title="Math OCR API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
 
 # Pydantic model for request
 class OCRRequest(BaseModel):

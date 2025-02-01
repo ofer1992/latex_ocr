@@ -1,12 +1,12 @@
 import { useEffect } from 'react'
+import axios from 'axios'
 import { Tldraw, useEditor, track, exportToBlob } from 'tldraw'
 import 'tldraw/tldraw.css'
 import './custom-ui.css'
 
 const CustomUi = track(() => {
 	const editor = useEditor()
-	console.log(editor)
-
+	editor.setCurrentTool('draw')
 	const exportImage = async () => {
 		const shapeIds = editor.getCurrentPageShapeIds()
 		if (shapeIds.size === 0) return alert('No shapes on the canvas')
@@ -17,6 +17,26 @@ const CustomUi = track(() => {
 			opts: { background: true },
 		})
 
+		// Convert blob to base64
+		const reader = new FileReader()
+		reader.readAsDataURL(blob)
+		reader.onloadend = async () => {
+			const base64data = reader.result.split(',')[1]
+			
+			try {
+				const response = await axios.post(`${import.meta.env.VITE_API_URL}/ocr`, {
+					image: base64data
+				})
+				
+				const resultElement = document.getElementById('ocr-result')
+				resultElement.textContent = response.data.latex
+			} catch (error) {
+				console.error('Error sending image to server:', error)
+				alert('Error processing image')
+			}
+		}
+
+		// Still show image preview
 		const imageUrl = window.URL.createObjectURL(blob)
 		const imagePreview = document.getElementById('image-preview')
 		imagePreview.innerHTML = `<img src="${imageUrl}" alt="Canvas Export" style="max-width: 100%; max-height: 100%;" />`
@@ -59,17 +79,17 @@ const CustomUi = track(() => {
 			<div className="custom-toolbar">
 				<button
 					className="custom-button"
-					data-isactive={editor.getCurrentToolId() === 'select'}
-					onClick={() => editor.setCurrentTool('select')}
-				>
-					Select
-				</button>
-				<button
-					className="custom-button"
 					data-isactive={editor.getCurrentToolId() === 'draw'}
 					onClick={() => editor.setCurrentTool('draw')}
 				>
 					Pencil
+				</button>
+				<button
+					className="custom-button"
+					data-isactive={editor.getCurrentToolId() === 'select'}
+					onClick={() => editor.setCurrentTool('select')}
+				>
+					Select
 				</button>
 				<button
 					className="custom-button"
@@ -135,6 +155,18 @@ export default function App() {
 					<CustomUi />
 				</Tldraw>
 			</div>
+
+			<div style={{
+				marginTop: '20px',
+				padding: '20px',
+				border: '1px solid #ccc',
+				borderRadius: '8px',
+				minHeight: '50px',
+				maxWidth: '800px',
+				fontFamily: 'monospace',
+			}} id="ocr-result">
+				OCR result will appear here
+			</div>
 			<div style={{
 				marginTop: '20px',
 				padding: '20px',
@@ -144,7 +176,9 @@ export default function App() {
 				maxWidth: '800px',
 				display: 'flex',
 				justifyContent: 'center',
-				alignItems: 'center'
+				alignItems: 'center',
+				flexDirection: 'column',
+				gap: '20px'
 			}} id="image-preview">
 				<p>Generated image will appear here</p>
 			</div>
